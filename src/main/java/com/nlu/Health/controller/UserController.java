@@ -78,7 +78,7 @@ public class UserController {
             return ResponseEntity.status(401).body(response);
         }
     }
-
+    @CrossOrigin(origins = "*")
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> payload) {
         String email = payload.get("email");
