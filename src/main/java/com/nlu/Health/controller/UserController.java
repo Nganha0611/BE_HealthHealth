@@ -33,24 +33,17 @@ public class UserController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> registerUser(@RequestBody User user) {
-        List<User> existingUser = userRepository.findByEmail(user.getEmail());
-
-        if (!existingUser.isEmpty()) {
-            Map<String, String> response = new HashMap<>();
-            response.put("message", "Email đã tồn tại!");
-            response.put("result", "false");
-
-            return ResponseEntity.badRequest().body(response);
-        }
-
+    public ResponseEntity<Map<String, String>> registerUser(@RequestBody User user) {
+        // Mã OTP đã được xác thực trước đó nên không cần kiểm tra email nữa
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         user.setRole("user");
         userRepository.save(user);
 
+        // Trả về JSON object có result
         Map<String, String> response = new HashMap<>();
-        response.put("message", "Đăng ký thành công!");
         response.put("result", "success");
+        response.put("message", "Đăng ký thành công!");
+
         return ResponseEntity.ok(response);
     }
 
