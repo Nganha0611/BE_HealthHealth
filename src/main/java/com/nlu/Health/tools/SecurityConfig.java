@@ -16,25 +16,24 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-
 public class SecurityConfig {
-
-
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/forgot-password","/api/auth/register", "/api/auth/login").permitAll() // Cho phép không cần xác thực
-                        .anyRequest().authenticated()
-                );
+                        .requestMatchers("/**").permitAll() // Mở quyền cho tất cả API
+                )
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()));
+
         return http.build();
     }
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("*")); // Cho phép tất cả các domain (có thể thay đổi)
+        configuration.setAllowedOrigins(List.of("*")); // Cho phép tất cả domain
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
 
@@ -42,9 +41,9 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-
 }
