@@ -29,12 +29,5 @@ public class EmailService {
 
         mailSender.send(message);
     }
-
-
-    public void sendVerificationEmail(String to, String otp) throws MessagingException {
-        String subject = "Mã xác thực tài khoản của bạn";
-        String body = "<h3>Mã xác thực của bạn là: <b>" + otp + "</b></h3>";
-        sendEmail(to, subject, body);
-    }
 }
 

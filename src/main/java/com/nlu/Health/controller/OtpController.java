@@ -1,7 +1,7 @@
 package com.nlu.Health.controller;
 
 import com.nlu.Health.model.User;
-import com.nlu.Health.repository.UserRepository;
+import com.nlu.Health.repository.AuthRepository;
 import com.nlu.Health.service.OtpService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -17,13 +17,13 @@ public class OtpController {
     @Autowired
     private OtpService otpService;
     @Autowired
-    private UserRepository userRepository;
+    private AuthRepository authRepository;
 
     @PostMapping("/sendFP")
     public ResponseEntity<Map<String, String>> sendOtpFP(@RequestParam String email) {
         Map<String, String> response = new HashMap<>();
 
-        List<User> existingUser = userRepository.findByEmail(email);
+        List<User> existingUser = authRepository.findByEmail(email);
         if (existingUser.isEmpty()) {
             response.put("result", "error");
             response.put("message", "Email không tồn tại!");
@@ -44,7 +44,7 @@ public class OtpController {
     public ResponseEntity<Map<String, String>> sendOtp(@RequestParam String email) {
         Map<String, String> response = new HashMap<>();
 
-        List<User> existingUser = userRepository.findByEmail(email);
+        List<User> existingUser = authRepository.findByEmail(email);
         if (!existingUser.isEmpty()) {
             response.put("result", "error");
             response.put("message", "Email đã tồn tại!");
