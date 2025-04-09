@@ -15,7 +15,7 @@ public class User {
     private String numberPhone;
     private String address;
     private String role;
-
+    private String url;
     // Constructors
     public User() {}
 
@@ -44,4 +44,7 @@ public class User {
 
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
+    public String getUrl() { return url; }
+    public void setUrl(String url) { this.url = url; }
 }
+

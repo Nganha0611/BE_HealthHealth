@@ -27,7 +27,7 @@ public class AuthService {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-    public List<User> getUsersByEmail(String email) {
+    public User getUsersByEmail(String email) {
         return userRepository.findByEmail(email);
     }
 }

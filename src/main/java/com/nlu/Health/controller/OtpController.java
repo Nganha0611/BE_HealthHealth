@@ -23,8 +23,8 @@ public class OtpController {
     public ResponseEntity<Map<String, String>> sendOtpFP(@RequestParam String email) {
         Map<String, String> response = new HashMap<>();
 
-        List<User> existingUser = authRepository.findByEmail(email);
-        if (existingUser.isEmpty()) {
+        User existingUser = authRepository.findByEmail(email);
+        if (existingUser == null) {
             response.put("result", "error");
             response.put("message", "Email không tồn tại!");
             return ResponseEntity.badRequest().body(response);
@@ -44,8 +44,8 @@ public class OtpController {
     public ResponseEntity<Map<String, String>> sendOtp(@RequestParam String email) {
         Map<String, String> response = new HashMap<>();
 
-        List<User> existingUser = authRepository.findByEmail(email);
-        if (!existingUser.isEmpty()) {
+        User existingUser = authRepository.findByEmail(email);
+        if (existingUser == null) {
             response.put("result", "error");
             response.put("message", "Email đã tồn tại!");
             return ResponseEntity.badRequest().body(response);
