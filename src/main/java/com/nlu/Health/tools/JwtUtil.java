@@ -8,7 +8,6 @@ import java.security.Key;
 
 public class JwtUtil {
 
-    // Nên đặt key ít nhất 256-bit (32 bytes) để phù hợp với HS256
     private static final String SECRET_KEY = "MySuperSecretKeyThatIsLongEnough123456";
     private static final long EXPIRATION_TIME = 86400000; // 1 ngày
 

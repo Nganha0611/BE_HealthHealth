@@ -62,16 +62,12 @@ public ResponseEntity<?> getUserInfo(@RequestHeader("Authorization") String toke
 
     @PostMapping("/register")
     public ResponseEntity<Map<String, String>> registerUser(@RequestBody User user) {
-        // Mã OTP đã được xác thực trước đó nên không cần kiểm tra email nữa
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         user.setRole("user");
         userService.addUser(user);
-
-        // Trả về JSON object có result
         Map<String, String> response = new HashMap<>();
         response.put("result", "success");
         response.put("message", "Đăng ký thành công!");
-
         return ResponseEntity.ok(response);
     }
 
@@ -80,7 +76,11 @@ public ResponseEntity<?> getUserInfo(@RequestHeader("Authorization") String toke
     public ResponseEntity<?> loginUser(@RequestBody User user) {
         User foundUser = userService.getUsersByEmail(user.getEmail());
         Map<String, Object> response = new HashMap<>();
-
+        if (foundUser == null) {
+            response.put("message", "Email không tồn tại!");
+            response.put("result", "emailNotExist");
+            return ResponseEntity.status(404).body(response);
+        }
         if (passwordEncoder.matches(user.getPassword(), foundUser.getPassword())) {
             String token = JwtUtil.generateToken(foundUser.getEmail());
 
@@ -116,7 +116,64 @@ public ResponseEntity<?> getUserInfo(@RequestHeader("Authorization") String toke
             return ResponseEntity.ok(response);
         } else {
             response.put("message", "Email không tồn tại!");
-            response.put("result", "false");
+            response.put("result", "emailNotExist");
+            return ResponseEntity.status(404).body(response);
+        }
+    }
+
+    @CrossOrigin(origins = "*")
+    @PutMapping("/update-info")
+    public ResponseEntity<Map<String, String>> updateUserInfo(@RequestBody Map<String, String> payload) {
+        String currentEmail = payload.get("currentEmail"); // email hiện tại để tìm user
+
+        Map<String, String> response = new HashMap<>();
+        User user = userService.getUsersByEmail(currentEmail);
+
+        if (user != null) {
+            // Cập nhật thông tin nếu có truyền vào
+            if (payload.containsKey("name")) {
+                user.setName(payload.get("name"));
+            }
+            if (payload.containsKey("email")) {
+                user.setEmail(payload.get("email"));
+            }
+            if (payload.containsKey("numberPhone")) {
+                user.setNumberPhone(payload.get("numberPhone"));
+            }
+            if (payload.containsKey("address")) {
+                user.setAddress(payload.get("address"));
+            }
+
+            userService.addUser(user); // Lưu lại thay đổi
+
+            response.put("result", "success");
+            response.put("message", "Thông tin người dùng đã được cập nhật!");
+            return ResponseEntity.ok(response);
+        } else {
+            response.put("result", "emailNotExist");
+            response.put("message", "Email không tồn tại!");
+            return ResponseEntity.status(404).body(response);
+        }
+    }
+    @CrossOrigin(origins = "*")
+    @PutMapping("/update-profile-image")
+    public ResponseEntity<Map<String, String>> updateProfileImage(@RequestBody Map<String, String> payload) {
+        String email = payload.get("email");
+        String url = payload.get("url"); // sử dụng trường url từ class User
+
+        Map<String, String> response = new HashMap<>();
+        User user = userService.getUsersByEmail(email);
+
+        if (user != null) {
+            user.setUrl(url);
+            userService.addUser(user);
+
+            response.put("result", "success");
+            response.put("message", "Ảnh đại diện đã được cập nhật!");
+            return ResponseEntity.ok(response);
+        } else {
+            response.put("result", "emailNotExist");
+            response.put("message", "Email không tồn tại!");
             return ResponseEntity.status(404).body(response);
         }
     }

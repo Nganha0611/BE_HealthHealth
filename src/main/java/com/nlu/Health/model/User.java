@@ -19,6 +19,10 @@ public class User {
     // Constructors
     public User() {}
 
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
     // Getters và Setters đầy đủ
     public String getId() { return id; }
 
