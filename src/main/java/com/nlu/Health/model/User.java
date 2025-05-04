@@ -16,11 +16,20 @@ public class User {
     private String address;
     private String role;
     private String url;
+    private boolean isVerify;
     // Constructors
     public User() {}
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public boolean isVerify() {
+        return isVerify;
+    }
+
+    public void setVerify(boolean verify) {
+        isVerify = verify;
     }
 
     // Getters và Setters đầy đủ

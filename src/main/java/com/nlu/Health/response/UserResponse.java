@@ -12,6 +12,7 @@ public class UserResponse {
     private String address;
     private String role;
     private String url;
+    private boolean isVerify;
 
     public UserResponse(User user) {
         this.id = user.getId();
@@ -23,10 +24,19 @@ public class UserResponse {
         this.address = user.getAddress();
         this.role = user.getRole();
         this.url = user.getUrl();
+        this.isVerify = user.isVerify();
     }
 
     public String getId() {
         return id;
+    }
+
+    public boolean isVerify() {
+        return isVerify;
+    }
+
+    public void setVerify(boolean verify) {
+        isVerify = verify;
     }
 
     public void setId(String id) {

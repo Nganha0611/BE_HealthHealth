@@ -1,11 +1,9 @@
 package com.nlu.Health.controller;
 
 import com.nlu.Health.model.BloodPressure;
-import com.nlu.Health.model.HeartRate;
 import com.nlu.Health.model.User;
 import com.nlu.Health.repository.AuthRepository;
 import com.nlu.Health.repository.BloodPressureRepository;
-import com.nlu.Health.repository.HeartRateRepository;
 import com.nlu.Health.tools.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,33 +11,29 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.Calendar;
 import java.util.Date;
-import java.util.TimeZone;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/blood-pressures")
 public class BloodPressureController {
 
     @Autowired
-    private BloodPressureRepository bloodPressRepo;
+    private BloodPressureRepository bloodPressureRepository;
     @Autowired
     private AuthRepository authRepository;
-    @Autowired
-    private BloodPressureRepository bloodPressureRepository;
 
     @PostMapping("/measure")
     public ResponseEntity<BloodPressure> createBloodPressure(@RequestBody BloodPressure bloodPressure) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.add(Calendar.HOUR_OF_DAY, 7); // Thêm 7 giờ
-        Date currentDate = calendar.getTime();
+        // Lấy thời gian hiện tại ở UTC
+        ZonedDateTime currentTime = ZonedDateTime.now(ZoneId.of("UTC"));
+        bloodPressure.setCreatedAt(Date.from(currentTime.toInstant()));
 
-        bloodPressure.setCreatedAt(currentDate);
-        return ResponseEntity.ok(bloodPressRepo.save(bloodPressure));
+        return ResponseEntity.ok(bloodPressureRepository.save(bloodPressure));
     }
+
     @GetMapping("/measure/latest")
     public ResponseEntity<BloodPressure> getLatestBloodPressure(HttpServletRequest request) {
         String token = request.getHeader("Authorization");
@@ -59,5 +53,10 @@ public class BloodPressureController {
         BloodPressure latest = bloodPressureRepository.findFirstByUserIdOrderByCreatedAtDesc(user.getId());
 
         return latest != null ? ResponseEntity.ok(latest) : ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/user/{userId}")
+    public List<BloodPressure> getBloodPressureByUser(@PathVariable String userId) {
+        return bloodPressureRepository.findByUserIdOrderByCreatedAtAsc(userId);
     }
 }
