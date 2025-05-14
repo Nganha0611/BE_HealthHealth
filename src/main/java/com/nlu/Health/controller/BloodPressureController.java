@@ -22,41 +22,101 @@ public class BloodPressureController {
 
     @Autowired
     private BloodPressureRepository bloodPressureRepository;
+
     @Autowired
     private AuthRepository authRepository;
 
+    // Hàm lấy userId từ token, tương tự PrescriptionController
+    private String getUserIdFromRequest(HttpServletRequest request) {
+        String token = request.getHeader("Authorization");
+        System.out.println("BloodPressureController - Authorization Header: " + token); // Logging để debug
+
+        if (token == null) {
+            System.out.println("BloodPressureController - Token is null");
+            return null;
+        }
+
+        // Xử lý token linh hoạt: bỏ prefix "Bearer " nếu có
+        if (token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
+
+        String email = JwtUtil.validateToken(token);
+        System.out.println("BloodPressureController - Email from token: " + email);
+
+        if (email == null) {
+            System.out.println("BloodPressureController - Invalid token");
+            return null;
+        }
+
+        User user = authRepository.findByEmail(email);
+        System.out.println("BloodPressureController - User ID: " + (user != null ? user.getId() : "null"));
+
+        return user != null ? user.getId() : null;
+    }
+
     @PostMapping("/measure")
-    public ResponseEntity<BloodPressure> createBloodPressure(@RequestBody BloodPressure bloodPressure) {
-        // Lấy thời gian hiện tại ở UTC
+    public ResponseEntity<BloodPressure> createBloodPressure(@RequestBody BloodPressure bloodPressure, HttpServletRequest request) {
+        String userId = getUserIdFromRequest(request);
+        if (userId == null) {
+            System.out.println("BloodPressureController - Unauthorized: Invalid token or user not found");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        bloodPressure.setUserId(userId);
         ZonedDateTime currentTime = ZonedDateTime.now(ZoneId.of("UTC"));
         bloodPressure.setCreatedAt(Date.from(currentTime.toInstant()));
 
-        return ResponseEntity.ok(bloodPressureRepository.save(bloodPressure));
+        System.out.println("BloodPressureController - Creating blood pressure for userId: " + userId);
+        BloodPressure savedBloodPressure = bloodPressureRepository.save(bloodPressure);
+        System.out.println("BloodPressureController - Blood pressure created with ID: " + savedBloodPressure.getId());
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedBloodPressure);
     }
 
     @GetMapping("/measure/latest")
     public ResponseEntity<BloodPressure> getLatestBloodPressure(HttpServletRequest request) {
-        String token = request.getHeader("Authorization");
-        if (token != null && token.startsWith("Bearer ")) {
-            token = token.substring(7);
-        }
-
-        String email = JwtUtil.validateToken(token); // Trả về email (hoặc "admin")
-        User user = authRepository.findByEmail(email);
-
-        if (user == null) {
+        String userId = getUserIdFromRequest(request);
+        if (userId == null) {
+            System.out.println("BloodPressureController - Unauthorized: Invalid token or user not found");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        System.out.println("User ID thực tế: " + user.getId());  // Debug check
+        System.out.println("BloodPressureController - Fetching latest blood pressure for userId: " + userId);
+        BloodPressure latest = bloodPressureRepository.findFirstByUserIdOrderByCreatedAtDesc(userId);
 
-        BloodPressure latest = bloodPressureRepository.findFirstByUserIdOrderByCreatedAtDesc(user.getId());
+        if (latest == null) {
+            System.out.println("BloodPressureController - No blood pressure data found for userId: " + userId);
+            return ResponseEntity.noContent().build();
+        }
 
-        return latest != null ? ResponseEntity.ok(latest) : ResponseEntity.noContent().build();
+        System.out.println("BloodPressureController - Found latest blood pressure for userId: " + userId);
+        return ResponseEntity.ok(latest);
     }
 
     @GetMapping("/user/{userId}")
-    public List<BloodPressure> getBloodPressureByUser(@PathVariable String userId) {
-        return bloodPressureRepository.findByUserIdOrderByCreatedAtAsc(userId);
+    public ResponseEntity<List<BloodPressure>> getBloodPressureByUser(@PathVariable String userId, HttpServletRequest request) {
+        String authenticatedUserId = getUserIdFromRequest(request);
+        if (authenticatedUserId == null) {
+            System.out.println("BloodPressureController - Unauthorized: Invalid token or user not found");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        // Kiểm tra userId khớp với user từ token
+        if (!authenticatedUserId.equals(userId)) {
+            System.out.println("BloodPressureController - Forbidden: userId " + userId + " does not match authenticated user " + authenticatedUserId);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        System.out.println("BloodPressureController - Fetching blood pressures for userId: " + userId);
+        List<BloodPressure> bloodPressures = bloodPressureRepository.findByUserIdOrderByCreatedAtAsc(userId);
+
+        if (bloodPressures.isEmpty()) {
+            System.out.println("BloodPressureController - No blood pressure data found for userId: " + userId);
+            return ResponseEntity.noContent().build();
+        }
+
+        System.out.println("BloodPressureController - Found " + bloodPressures.size() + " blood pressure records for userId: " + userId);
+        return ResponseEntity.ok(bloodPressures);
     }
 }

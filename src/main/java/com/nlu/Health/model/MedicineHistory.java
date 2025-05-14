@@ -2,9 +2,10 @@ package com.nlu.Health.model;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Date;
-
+@Document(collection = "medicine_history")
 public class MedicineHistory {
     @Id
     private String id;
