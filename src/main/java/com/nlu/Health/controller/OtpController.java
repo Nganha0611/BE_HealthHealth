@@ -45,7 +45,7 @@ public class OtpController {
         Map<String, String> response = new HashMap<>();
 
         User existingUser = authRepository.findByEmail(email);
-        if (existingUser == null) {
+        if (existingUser != null) {
             response.put("result", "error");
             response.put("message", "Email đã tồn tại!");
             return ResponseEntity.badRequest().body(response);
@@ -58,6 +58,7 @@ public class OtpController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             response.put("result", "error");
+            e.printStackTrace();
             response.put("message", "Lỗi khi gửi OTP: " + e.getMessage());
             return ResponseEntity.badRequest().body(response);
         }
