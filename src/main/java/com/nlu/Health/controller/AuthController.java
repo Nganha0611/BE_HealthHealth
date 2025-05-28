@@ -7,6 +7,7 @@ import com.nlu.Health.model.User;
 import com.nlu.Health.repository.AuthRepository;
 import com.nlu.Health.response.UserResponse;
 import com.nlu.Health.service.AuthService;
+import com.nlu.Health.service.NotificationService;
 import com.nlu.Health.tools.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -29,8 +30,94 @@ public class AuthController {
     private PasswordEncoder passwordEncoder;
     @Autowired
     private AuthRepository authRepository;
+    @Autowired
+    private NotificationService notificationService;
+    @CrossOrigin(origins = "*")
+    @GetMapping("/check-token")
+    public ResponseEntity<Map<String, String>> checkToken(
+            @RequestHeader("Authorization") String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("result", "unauthorized", "message", "Thiếu hoặc sai định dạng Authorization header"));
+        }
 
+        String token = authHeader.substring(7); // Lấy phần token sau "Bearer "
+        String email = JwtUtil.validateToken(token);
 
+        Map<String, String> response = new HashMap<>();
+
+        if (email != null) {
+            response.put("result", "success");
+            response.put("message", "Token vẫn hợp lệ");
+            response.put("email", email); // Trả về email để xác nhận
+        } else {
+            response.put("result", "invalid");
+            response.put("message", "Token không hợp lệ hoặc đã hết hạn");
+        }
+
+        return ResponseEntity.ok(response);
+    }
+    @CrossOrigin(origins = "*")
+    @PostMapping("/save-fcm-token")
+    public ResponseEntity<Map<String, String>> saveFcmToken(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody Map<String, String> payload) {
+        String token = authHeader.substring(7);
+        String email = JwtUtil.validateToken(token);
+        if (email == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("result", "unauthorized", "message", "Token không hợp lệ"));
+        }
+
+        String fcmToken = payload.get("fcmToken");
+        if (fcmToken == null || fcmToken.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("result", "error", "message", "fcmToken không được để trống"));
+        }
+
+        User user = authRepository.findByEmail(email);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("result", "userNotFound", "message", "Không tìm thấy tài khoản"));
+        }
+
+        user.setFcmToken(fcmToken);
+        authRepository.save(user);
+
+        return ResponseEntity.ok(Map.of("result", "success", "message", "FCM Token đã được lưu"));
+    }
+
+//    // Thêm API để gửi thông báo
+//    @CrossOrigin(origins = "*")
+//    @PostMapping("/send-notification")
+//    public ResponseEntity<Map<String, String>> sendNotification(
+//            @RequestHeader("Authorization") String authHeader,
+//            @RequestBody Map<String, Object> payload) {
+//        String token = authHeader.substring(7);
+//        String email = JwtUtil.validateToken(token);
+//        if (email == null) {
+//            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+//                    .body(Map.of("result", "unauthorized", "message", "Token không hợp lệ"));
+//        }
+//
+//        User user = authRepository.findByEmail(email);
+//        if (user == null) {
+//            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+//                    .body(Map.of("result", "userNotFound", "message", "Không tìm thấy tài khoản"));
+//        }
+//
+//        String userId = user.getId();
+//        String title = (String) payload.get("title");
+//        String body = (String) payload.get("body");
+//
+//        if (title == null || body == null || title.isEmpty() || body.isEmpty()) {
+//            return ResponseEntity.badRequest()
+//                    .body(Map.of("result", "error", "message", "title và body không được để trống"));
+//        }
+//
+//        notificationService.sendNotificationToFollowers(userId, title, body);
+//        return ResponseEntity.ok(Map.of("result", "success", "message", "Thông báo đã được gửi"));
+//    }
     @CrossOrigin(origins = "*")
     @PutMapping("/verify-phone")
     public ResponseEntity<Map<String, String>> verifyPhone(
@@ -135,8 +222,6 @@ public ResponseEntity<?> getUserInfo(@RequestHeader("Authorization") String toke
     response.put("role", user.getRole());
     response.put("url", user.getUrl());
     response.put("isVerify", user.isVerify());
-    System.out.println(user.isVerify());
-    System.out.println(user.getEmail());
 
     return ResponseEntity.ok(response);
 }
@@ -170,7 +255,6 @@ public ResponseEntity<?> getUserInfo(@RequestHeader("Authorization") String toke
             response.put("result", "success");
             response.put("token", token);
             response.put("user", new UserResponse(foundUser));
-            System.out.println(new UserResponse(foundUser).isVerify());
             return ResponseEntity.ok(response);
         } else {
             response.put("message", "Mật khẩu không chính xác!");
@@ -259,5 +343,27 @@ public ResponseEntity<?> getUserInfo(@RequestHeader("Authorization") String toke
             return ResponseEntity.status(404).body(response);
         }
     }
+    @CrossOrigin(origins = "*")
+    @GetMapping("/users/{id}")
+    public ResponseEntity<?> getUserById(@PathVariable String id) {
+        User user = authRepository.findById(id).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Không tìm thấy người dùng với ID: " + id);
+        }
 
+        // Không trả password
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", user.getId());
+        response.put("name", user.getName());
+        response.put("email", user.getEmail());
+        response.put("birth", user.getBirth());
+        response.put("sex", user.getSex());
+        response.put("numberPhone", user.getNumberPhone());
+        response.put("address", user.getAddress());
+        response.put("role", user.getRole());
+        response.put("url", user.getUrl());
+        response.put("isVerify", user.isVerify());
+
+        return ResponseEntity.ok(response);
+    }
 }

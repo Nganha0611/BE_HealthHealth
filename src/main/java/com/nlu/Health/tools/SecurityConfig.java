@@ -22,7 +22,7 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                                .requestMatchers("/**").permitAll() // Mở quyền cho tất cả API
+                                .requestMatchers("/**").permitAll()
 
                 )
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()));

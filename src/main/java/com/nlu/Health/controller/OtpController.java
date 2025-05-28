@@ -2,13 +2,15 @@ package com.nlu.Health.controller;
 
 import com.nlu.Health.model.User;
 import com.nlu.Health.repository.AuthRepository;
+import com.nlu.Health.service.OtpData;
 import com.nlu.Health.service.OtpService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -40,6 +42,7 @@ public class OtpController {
             return ResponseEntity.badRequest().body(response);
         }
     }
+
     @PostMapping("/send")
     public ResponseEntity<Map<String, String>> sendOtp(@RequestParam String email) {
         Map<String, String> response = new HashMap<>();
@@ -64,11 +67,35 @@ public class OtpController {
         }
     }
 
-
     @PostMapping("/verify")
-    public ResponseEntity<String> verifyOtp(@RequestParam String email, @RequestParam String otp) {
+    public ResponseEntity<Map<String, String>> verifyOtp(
+            @RequestParam String email,
+            @RequestParam String otp) {
+        Map<String, String> response = new HashMap<>();
+
+        OtpData storedOtp = otpService.getOtpData(email);
+        if (storedOtp == null) {
+            response.put("result", "error");
+            response.put("message", "OTP không tồn tại!");
+            return ResponseEntity.badRequest().body(response);
+        }
+
+        long currentTime = ZonedDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant().toEpochMilli();
+        if (currentTime > storedOtp.getExpiresAt()) {
+            response.put("result", "error");
+            response.put("message", "OTP đã hết hạn!");
+            return ResponseEntity.badRequest().body(response);
+        }
+
         boolean isValid = otpService.verifyOtp(email, otp);
-        return isValid ? ResponseEntity.ok("OTP hợp lệ!") : ResponseEntity.badRequest().body("OTP không đúng!");
+        if (isValid) {
+            response.put("result", "success");
+            response.put("message", "OTP hợp lệ!");
+            return ResponseEntity.ok(response);
+        } else {
+            response.put("result", "error");
+            response.put("message", "OTP không đúng!");
+            return ResponseEntity.badRequest().body(response);
+        }
     }
 }
-

@@ -10,7 +10,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Date;
 import java.util.List;
 
 @RestController
@@ -50,7 +49,6 @@ public class MedicineHistoryController {
         if (userId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
 
         history.setUserId(userId);
-        // Không ghi đè timestamp, giữ nguyên giá trị từ request
         System.out.println("Timestamp từ request (POST): " + history.getTimestamp());
         MedicineHistory savedHistory = medicineHistoryRepository.save(history);
         System.out.println("Timestamp sau khi lưu (POST): " + savedHistory.getTimestamp());
@@ -65,10 +63,10 @@ public class MedicineHistoryController {
         MedicineHistory history = medicineHistoryRepository.findByIdAndUserId(id, userId);
         if (history == null) return ResponseEntity.notFound().build();
 
-        history.setPrescriptionsId(newHistory.getPrescriptionsId());
+        history.setMedicineName(newHistory.getMedicineName()); // Cập nhật medicineName
         history.setStatus(newHistory.getStatus());
         history.setNote(newHistory.getNote());
-        history.setTimestamp(newHistory.getTimestamp()); // Sử dụng timestamp từ request
+        history.setTimestamp(newHistory.getTimestamp());
         System.out.println("Timestamp từ request (PUT): " + newHistory.getTimestamp());
         MedicineHistory savedHistory = medicineHistoryRepository.save(history);
         System.out.println("Timestamp sau khi lưu (PUT): " + savedHistory.getTimestamp());

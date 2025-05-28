@@ -10,4 +10,5 @@ import java.util.List;
 public interface MedicalHistoryRepository extends MongoRepository<MedicalHistory, String> {
     List<MedicalHistory> findByUserIdOrderByTimestampDesc(String userId);
     MedicalHistory findByIdAndUserId(String id, String userId);
+    List<MedicalHistory> findByStatus(String status);
 }
