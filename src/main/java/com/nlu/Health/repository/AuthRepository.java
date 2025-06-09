@@ -9,8 +9,7 @@ import java.util.Optional;
 
 @Repository
 public interface AuthRepository extends MongoRepository<User, String> {
+//    [lg-6-7]
     User findByEmail(String email);
-    User findByNumberPhone(String numberPhone);
     Optional<User> findByNumberPhoneAndIsVerifyTrue(String numberPhone);
-    User findByFcmToken(String fcmToken); // Thêm phương thức mới
     Optional<User> findById(String id);}

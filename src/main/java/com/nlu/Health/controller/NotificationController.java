@@ -2,6 +2,7 @@ package com.nlu.Health.controller;
 
 import com.nlu.Health.model.Notification;
 import com.nlu.Health.repository.NotificationRepository;
+import com.nlu.Health.service.AuthService;
 import com.nlu.Health.tools.JwtUtil;
 import com.nlu.Health.model.User;
 import com.nlu.Health.repository.AuthRepository;
@@ -23,7 +24,7 @@ public class NotificationController {
     private NotificationRepository notificationRepository;
 
     @Autowired
-    private AuthRepository authRepository;
+    private AuthService authService;
 
     private String getUserIdFromRequest(HttpServletRequest request) {
         String token = request.getHeader("Authorization");
@@ -42,7 +43,7 @@ public class NotificationController {
             return null;
         }
 
-        User user = authRepository.findByEmail(email);
+        User user = authService.getUsersByEmail(email);
         return user != null ? user.getId() : null;
     }
 

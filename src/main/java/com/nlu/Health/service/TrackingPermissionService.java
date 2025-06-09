@@ -30,7 +30,7 @@ public class TrackingPermissionService {
                 permission.setTimestamp(DATE_FORMAT.format(Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant())));
                 return trackingPermissionRepository.save(permission);
             }
-            throw new IllegalStateException("A tracking request already exists with status: " + permission.getStatus());
+            throw new IllegalStateException(permission.getStatus());
         }
 
         TrackingPermission permission = new TrackingPermission(followerUserId, followedUserId, "pending",

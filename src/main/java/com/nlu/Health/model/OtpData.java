@@ -1,4 +1,4 @@
-package com.nlu.Health.service;
+package com.nlu.Health.model;
 
 public class OtpData {
     private final String otp;

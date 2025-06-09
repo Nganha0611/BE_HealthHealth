@@ -10,7 +10,6 @@ import java.util.List;
 @Repository
 public interface MedicineReminderRepository extends MongoRepository<MedicineReminder, String> {
     List<MedicineReminder> findByStatusAndScheduledTimeBetween(String status, Date start, Date end);
-    MedicineReminder findByUserIdAndScheduledTime(String userId, Date scheduledTime);
-
     List<MedicineReminder> findByUserIdAndPrescriptionIdAndScheduledTime(String userId, String id, Date scheduledTime);
+    MedicineReminder findByMedicineHistoryId(String medicineHistoryId);
 }

@@ -6,6 +6,7 @@ import com.nlu.Health.model.Notification;
 import com.nlu.Health.repository.AuthRepository;
 import com.nlu.Health.repository.HeartRateRepository;
 import com.nlu.Health.repository.NotificationRepository;
+import com.nlu.Health.service.AuthService;
 import com.nlu.Health.service.NotificationService;
 import com.nlu.Health.repository.TrackingPermissionRepository;
 import com.nlu.Health.tools.JwtUtil;
@@ -34,13 +35,7 @@ public class HeartRateController {
     private HeartRateRepository heartRateRepo;
 
     @Autowired
-    private AuthRepository authRepository;
-
-    @Autowired
-    private TrackingPermissionRepository trackingPermissionRepository;
-
-    @Autowired
-    private NotificationRepository notificationRepository;
+    private AuthService authService;
 
     @Autowired
     private NotificationService notificationService;
@@ -66,7 +61,7 @@ public class HeartRateController {
             return null;
         }
 
-        User user = authRepository.findByEmail(email);
+        User user = authService.getUsersByEmail(email);
         System.out.println("HeartRateController - User ID: " + (user != null ? user.getId() : "null"));
 
         return user != null ? user.getId() : null;
@@ -76,7 +71,6 @@ public class HeartRateController {
     public ResponseEntity<HeartRate> createHeartRate(@RequestBody HeartRate heartRate, HttpServletRequest request) {
         String userId = getUserIdFromRequest(request);
         if (userId == null) {
-            System.out.println("HeartRateController - Unauthorized: Invalid token or user not found");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         heartRate.setUserId(userId);
@@ -93,69 +87,43 @@ public class HeartRateController {
         );
 
         if (existingRecord.isPresent()) {
-            System.out.println("HeartRateController - Duplicate record found for userId: " + userId + ", createdAt: " + heartRate.getCreatedAt());
             return ResponseEntity.status(HttpStatus.OK).body(existingRecord.get());
         }
 
         HeartRate savedHeartRate = heartRateRepo.save(heartRate);
 
-        User user = authRepository.findById(savedHeartRate.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = authService.findUserById(userId);
+
         if (savedHeartRate.getHeartRate() > 100) {
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
             String formattedDate = sdf.format(savedHeartRate.getCreatedAt());
-
-            String message = "Nhịp tim của bạn" + " là " + savedHeartRate.getHeartRate() +
+            String title = "Cảnh báo nhịp tim!";
+            String bodyFollowers = "Nhịp tim của " + user.getName() + " là " + savedHeartRate.getHeartRate() + " bpm.";
+            String bodyUser = "Nhịp tim của bạn" + " là " + savedHeartRate.getHeartRate() +
                     " bpm vào " + formattedDate;
 
-            Notification notification = new Notification(
+            Notification notificationForUser = new Notification(
                     userId,
                     "heart_rate_alert",
-                    message,
+                    bodyUser,
                     LocalDateTime.now(),
                     "unread"
             );
-            notificationRepository.save(notification);
+            Notification notificationforFollowers = new Notification(
+                    userId,
+                    "heart_rate_alert",
+                    bodyUser,
+                    LocalDateTime.now(),
+                    "unread"
+            );
 
-            String title = "Cảnh báo nhịp tim!";
-            String body = "Nhịp tim của " + user.getName() + " là " + savedHeartRate.getHeartRate() + " bpm. Hãy nghỉ ngơi.";
-            notificationService.sendNotificationToFollowers(userId, title, body);
+            notificationService.sendNotificationToUser(userId, title, bodyUser, notificationForUser);
+            notificationService.sendNotificationToFollowers(userId, title, bodyFollowers, notificationforFollowers);
 
-            sendFcmNotification(userId, "Cảnh báo nhịp tim cá nhân",
-                    "Nhịp tim của bạn là " + savedHeartRate.getHeartRate() + " bpm. Muốn gọi người thân?",
-                    "voice_call_prompt");
         }
-
         return ResponseEntity.status(HttpStatus.CREATED).body(savedHeartRate);
     }
 
-    private void sendFcmNotification(String userId, String title, String body, String action) {
-        try {
-            String fcmToken = getFcmTokenForUser(userId);
-            if (fcmToken == null || fcmToken.isEmpty()) {
-                System.err.println("FCM Token is null or empty for userId: " + userId);
-                return;
-            }
-
-            Message message = Message.builder()
-                    .putData("title", title)
-                    .putData("body", body)
-                    .putData("action", action)
-                    .setToken(fcmToken)
-                    .build();
-
-            String response = FirebaseMessaging.getInstance().send(message);
-            System.out.println("Successfully sent FCM message: " + response);
-        } catch (Exception e) {
-            System.err.println("Failed to send FCM notification for userId " + userId + ": " + e.getMessage());
-        }
-    }
-
-    private String getFcmTokenForUser(String userId) {
-        User user = authRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        return user.getFcmToken();
-    }
 
     @GetMapping("/measure/latest")
     public ResponseEntity<HeartRate> getLatestHeartRate(HttpServletRequest request) {

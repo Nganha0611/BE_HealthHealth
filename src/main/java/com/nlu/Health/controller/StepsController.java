@@ -4,6 +4,7 @@ import com.nlu.Health.model.Steps;
 import com.nlu.Health.model.User;
 import com.nlu.Health.repository.AuthRepository;
 import com.nlu.Health.repository.StepsRepository;
+import com.nlu.Health.service.AuthService;
 import com.nlu.Health.tools.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +25,7 @@ public class StepsController {
     private StepsRepository stepsRepo;
 
     @Autowired
-    private AuthRepository authRepository;
+    private AuthService authService;
 
     private String getUserIdFromRequest(HttpServletRequest request) {
         String token = request.getHeader("Authorization");
@@ -47,7 +48,7 @@ public class StepsController {
             return null;
         }
 
-        User user = authRepository.findByEmail(email);
+        User user = authService.getUsersByEmail(email);
         System.out.println("StepsController - User ID: " + (user != null ? user.getId() : "null"));
 
         return user != null ? user.getId() : null;

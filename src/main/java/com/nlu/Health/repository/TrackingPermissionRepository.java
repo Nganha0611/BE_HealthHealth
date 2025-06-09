@@ -13,6 +13,5 @@ public interface TrackingPermissionRepository extends MongoRepository<TrackingPe
     List<TrackingPermission> findByFollowedUserId(String followedUserId);
     Optional<TrackingPermission> findByFollowerUserIdAndFollowedUserId(String followerUserId, String followedUserId);
     Optional<TrackingPermission> findByFollowerUserIdAndFollowedUserIdAndStatus(String followerUserId, String followedUserId, String status);
-
     List<TrackingPermission> findByFollowedUserIdAndStatus(String followedUserId, String status);
 }

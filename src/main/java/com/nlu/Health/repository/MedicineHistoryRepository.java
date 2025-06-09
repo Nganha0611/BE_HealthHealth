@@ -7,5 +7,4 @@ import java.util.List;
 public interface MedicineHistoryRepository extends MongoRepository<MedicineHistory, String> {
     List<MedicineHistory> findByUserIdOrderByTimestampDesc(String userId);
     MedicineHistory findByIdAndUserId(String id, String userId);
-    List<MedicineHistory> findByMedicineName(String medicineName); // Updated from findByPrescriptionsId
 }

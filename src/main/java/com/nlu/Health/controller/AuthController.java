@@ -4,10 +4,8 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseToken;
 import com.nlu.Health.model.User;
-import com.nlu.Health.repository.AuthRepository;
 import com.nlu.Health.response.UserResponse;
 import com.nlu.Health.service.AuthService;
-import com.nlu.Health.service.NotificationService;
 import com.nlu.Health.tools.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -16,22 +14,20 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
-    @Autowired
-    private AuthService userService;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
     @Autowired
-    private AuthRepository authRepository;
-    @Autowired
-    private NotificationService notificationService;
+    private AuthService authService;
+
+
+
     @CrossOrigin(origins = "*")
     @GetMapping("/check-token")
     public ResponseEntity<Map<String, String>> checkToken(
@@ -75,49 +71,19 @@ public class AuthController {
                     .body(Map.of("result", "error", "message", "fcmToken không được để trống"));
         }
 
-        User user = authRepository.findByEmail(email);
+        User user = authService.getUsersByEmail(email);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("result", "userNotFound", "message", "Không tìm thấy tài khoản"));
         }
 
         user.setFcmToken(fcmToken);
-        authRepository.save(user);
+        authService.saveUser(user);
 
         return ResponseEntity.ok(Map.of("result", "success", "message", "FCM Token đã được lưu"));
     }
 
-//    // Thêm API để gửi thông báo
-//    @CrossOrigin(origins = "*")
-//    @PostMapping("/send-notification")
-//    public ResponseEntity<Map<String, String>> sendNotification(
-//            @RequestHeader("Authorization") String authHeader,
-//            @RequestBody Map<String, Object> payload) {
-//        String token = authHeader.substring(7);
-//        String email = JwtUtil.validateToken(token);
-//        if (email == null) {
-//            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-//                    .body(Map.of("result", "unauthorized", "message", "Token không hợp lệ"));
-//        }
-//
-//        User user = authRepository.findByEmail(email);
-//        if (user == null) {
-//            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-//                    .body(Map.of("result", "userNotFound", "message", "Không tìm thấy tài khoản"));
-//        }
-//
-//        String userId = user.getId();
-//        String title = (String) payload.get("title");
-//        String body = (String) payload.get("body");
-//
-//        if (title == null || body == null || title.isEmpty() || body.isEmpty()) {
-//            return ResponseEntity.badRequest()
-//                    .body(Map.of("result", "error", "message", "title và body không được để trống"));
-//        }
-//
-//        notificationService.sendNotificationToFollowers(userId, title, body);
-//        return ResponseEntity.ok(Map.of("result", "success", "message", "Thông báo đã được gửi"));
-//    }
+
     @CrossOrigin(origins = "*")
     @PutMapping("/verify-phone")
     public ResponseEntity<Map<String, String>> verifyPhone(
@@ -149,7 +115,7 @@ public class AuthController {
                 : rawPhone;
 
         // 4. Lấy user hiện tại theo email
-        User me = authRepository.findByEmail(email);
+        User me = authService.getUsersByEmail(email);
         if (me == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("result","userNotFound","message","Không tìm thấy tài khoản"));
@@ -162,7 +128,7 @@ public class AuthController {
         }
 
         // 6. Kiểm tra xem có account khác đã verify cùng số chưa?
-        Optional<User> otherOpt = authRepository.findByNumberPhoneAndIsVerifyTrue(phoneNumber);
+        Optional<User> otherOpt = authService.findByNumberPhoneAndIsVerify(phoneNumber);
         if (otherOpt.isPresent() && !otherOpt.get().getEmail().equals(email)) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of(
@@ -173,26 +139,12 @@ public class AuthController {
 
         // 7. Cập nhật flag verify
         me.setVerify(true);
-        authRepository.save(me);
+        authService.saveUser(me);
 
         return ResponseEntity.ok(Map.of(
                 "result","success",
                 "message","Số điện thoại đã được xác thực!"
         ));
-    }
-
-
-    @PostMapping("/firebase")
-    public ResponseEntity<String> verifyToken(@RequestBody Map<String, String> request) {
-        String idToken = request.get("idToken");
-
-        try {
-            FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(idToken);
-            String phoneNumber = decodedToken.getClaims().get("phone_number").toString();
-            return ResponseEntity.ok("Xác thực thành công: " + phoneNumber);
-        } catch (FirebaseAuthException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token không hợp lệ");
-        }
     }
 
 
@@ -205,7 +157,7 @@ public ResponseEntity<?> getUserInfo(@RequestHeader("Authorization") String toke
         return ResponseEntity.status(401).body("Token không hợp lệ hoặc hết hạn");
     }
 
-    User user = authRepository.findByEmail(email);
+    User user = authService.getUsersByEmail(email);
     if (user == null) {
         return ResponseEntity.status(404).body("Không tìm thấy người dùng");
     }
@@ -231,34 +183,35 @@ public ResponseEntity<?> getUserInfo(@RequestHeader("Authorization") String toke
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         user.setRole("user");
         user.setVerify(false);
-        userService.addUser(user);
+        authService.saveUser(user);
         Map<String, String> response = new HashMap<>();
         response.put("result", "success");
-        response.put("message", "Đăng ký thành công!");
         return ResponseEntity.ok(response);
     }
 
-
+    //       [lg-4]
     @PostMapping("/login")
     public ResponseEntity<?> loginUser(@RequestBody User user) {
-        User foundUser = userService.getUsersByEmail(user.getEmail());
+//       [lg-9]
+        User foundUser = authService.getUsersByEmail(user.getEmail());
         Map<String, Object> response = new HashMap<>();
         if (foundUser == null) {
-            response.put("message", "Email không tồn tại!");
             response.put("result", "emailNotExist");
+//            [lg-10]
             return ResponseEntity.status(404).body(response);
         }
+//        [lg-12]
         if (passwordEncoder.matches(user.getPassword(), foundUser.getPassword())) {
+//            [lg-13-14]
             String token = JwtUtil.generateToken(foundUser.getEmail());
-
-            response.put("message", "Đăng nhập thành công!");
             response.put("result", "success");
             response.put("token", token);
             response.put("user", new UserResponse(foundUser));
+//            [lg-15]
             return ResponseEntity.ok(response);
         } else {
-            response.put("message", "Mật khẩu không chính xác!");
             response.put("result", "wrongPassword");
+//            [lg-17]
             return ResponseEntity.status(401).body(response);
         }
 
@@ -270,18 +223,15 @@ public ResponseEntity<?> getUserInfo(@RequestHeader("Authorization") String toke
         String email = payload.get("email");
         String newPassword = payload.get("newPassword");
 
-        User user = userService.getUsersByEmail(email);
+        User user = authService.getUsersByEmail(email);
         Map<String, String> response = new HashMap<>();
 
         if (!(user == null)) {
             user.setPassword(passwordEncoder.encode(newPassword));
-            userService.addUser(user);
-
-            response.put("message", "Mật khẩu đã được cập nhật!");
+            authService.saveUser(user);
             response.put("result", "success");
             return ResponseEntity.ok(response);
         } else {
-            response.put("message", "Email không tồn tại!");
             response.put("result", "emailNotExist");
             return ResponseEntity.status(404).body(response);
         }
@@ -293,7 +243,7 @@ public ResponseEntity<?> getUserInfo(@RequestHeader("Authorization") String toke
         String currentEmail = payload.get("currentEmail"); // email hiện tại để tìm user
 
         Map<String, String> response = new HashMap<>();
-        User user = userService.getUsersByEmail(currentEmail);
+        User user = authService.getUsersByEmail(currentEmail);
 
         if (user != null) {
             // Cập nhật thông tin nếu có truyền vào
@@ -310,7 +260,7 @@ public ResponseEntity<?> getUserInfo(@RequestHeader("Authorization") String toke
                 user.setAddress(payload.get("address"));
             }
 
-            userService.addUser(user); // Lưu lại thay đổi
+            authService.saveUser(user); // Lưu lại thay đổi
 
             response.put("result", "success");
             response.put("message", "Thông tin người dùng đã được cập nhật!");
@@ -328,11 +278,11 @@ public ResponseEntity<?> getUserInfo(@RequestHeader("Authorization") String toke
         String url = payload.get("url"); // sử dụng trường url từ class User
 
         Map<String, String> response = new HashMap<>();
-        User user = userService.getUsersByEmail(email);
+        User user = authService.getUsersByEmail(email);
 
         if (user != null) {
             user.setUrl(url);
-            userService.addUser(user);
+            authService.saveUser(user);
 
             response.put("result", "success");
             response.put("message", "Ảnh đại diện đã được cập nhật!");
@@ -343,15 +293,13 @@ public ResponseEntity<?> getUserInfo(@RequestHeader("Authorization") String toke
             return ResponseEntity.status(404).body(response);
         }
     }
-    @CrossOrigin(origins = "*")
     @GetMapping("/users/{id}")
     public ResponseEntity<?> getUserById(@PathVariable String id) {
-        User user = authRepository.findById(id).orElse(null);
+        User user = authService.findUserById(id);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Không tìm thấy người dùng với ID: " + id);
         }
 
-        // Không trả password
         Map<String, Object> response = new HashMap<>();
         response.put("id", user.getId());
         response.put("name", user.getName());
@@ -365,5 +313,31 @@ public ResponseEntity<?> getUserInfo(@RequestHeader("Authorization") String toke
         response.put("isVerify", user.isVerify());
 
         return ResponseEntity.ok(response);
+    }
+    @CrossOrigin(origins = "*")
+    @PostMapping("/change-password")
+    public ResponseEntity<Map<String, String>> changePassword(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody Map<String, String> payload) {
+        String token = authHeader.substring(7);
+        String email = JwtUtil.validateToken(token);
+        if (email == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("result", "unauthorized"));
+        }
+
+        String currentPassword = payload.get("currentPassword");
+        String newPassword = payload.get("newPassword");
+
+        User user = authService.getUsersByEmail(email);
+
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("result", "wrongPassword", "message", "Mật khẩu hiện tại không đúng"));
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
+        authService.saveUser(user);
+
+        return ResponseEntity.ok(Map.of("result", "success", "message", "Mật khẩu đã được thay đổi thành công!"));
     }
 }

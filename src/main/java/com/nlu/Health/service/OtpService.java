@@ -1,5 +1,6 @@
 package com.nlu.Health.service;
 
+import com.nlu.Health.model.OtpData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -12,6 +13,8 @@ import java.util.Random;
 
 @Service
 public class OtpService {
+
+
     private final Map<String, OtpData> otpStorage = new HashMap<>();
     private static final long OTP_VALID_DURATION = 5 * 60 * 1000; // 5 phút
     private static final ZoneId ZONE_ID = ZoneId.of("Asia/Ho_Chi_Minh");
@@ -75,7 +78,7 @@ public class OtpService {
         mailService.sendEmail(email, subject, body);
     }
 
-    public boolean verifyOtp(String email, String inputOtp) {
+    public boolean verifyOtp(String email, String otp) {
         OtpData storedOtp = otpStorage.get(email);
         long currentTime = ZonedDateTime.now(ZONE_ID).toInstant().toEpochMilli();
 
@@ -93,7 +96,7 @@ public class OtpService {
             return false;
         }
 
-        if (storedOtp.getOtp().equals(inputOtp)) {
+        if (storedOtp.getOtp().equals(otp)) {
             otpStorage.remove(email);
             System.out.println("OTP verified successfully for email: " + email);
             return true;

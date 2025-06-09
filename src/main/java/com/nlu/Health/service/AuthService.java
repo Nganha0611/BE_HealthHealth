@@ -9,25 +9,27 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class AuthService {
     @Autowired
     private AuthRepository userRepository;
 
-    public List<User> getAllUsers() {
-        return userRepository.findAll();
+    public void saveUser(User user) {
+             userRepository.save(user);
+
+    }
+    public User findUserById(String id) {
+        return userRepository.findById(id).orElse(null);
+    }
+//    [lg -5]
+    public User getUsersByEmail(String email) {
+//        [lg -8]
+        return userRepository.findByEmail(email);
     }
 
-    public ResponseEntity<User> addUser(User user) {
-        try {
-            User savedUser = userRepository.save(user);
-            return ResponseEntity.status(HttpStatus.CREATED).body(savedUser);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-    public User getUsersByEmail(String email) {
-        return userRepository.findByEmail(email);
+    public Optional<User> findByNumberPhoneAndIsVerify(String numberPhone) {
+        return userRepository.findByNumberPhoneAndIsVerifyTrue(numberPhone);
     }
 }

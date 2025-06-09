@@ -28,30 +28,9 @@ public class NotificationService {
 
 
 
-    public void sendNotificationToFollowers(String userId, String title, String body) {
-        // Lấy thông tin người dùng
+    public void sendNotificationToFollowers(String userId, String title, String body, com.nlu.Health.model.Notification notification) {
         User user = authRepository.findById(userId).orElse(null);
-        if (user == null || user.getFcmToken() == null) {
-            logger.warn("User or FCM Token not found for userId: {}", userId);
-            return;
-        }
 
-        // Comment đoạn gửi cho user hiện tại (theo yêu cầu ban đầu)
-//        Message userMessage = Message.builder()
-//                .setNotification(Notification.builder()
-//                        .setTitle(title)
-//                        .setBody(body)
-//                        .build())
-//                .setToken(user.getFcmToken())
-//                .build();
-//        try {
-//            FirebaseMessaging.getInstance().send(userMessage);
-//            logger.info("Notification sent to user: {}", userId);
-//        } catch (Exception e) {
-//            logger.error("Failed to send notification to user {}: {}", userId, e.getMessage(), e);
-//        }
-
-        // Lấy danh sách người theo dõi (approved status)
         List<TrackingPermission> followers = trackingPermissionRepository.findByFollowedUserIdAndStatus(userId, "approved");
         for (TrackingPermission permission : followers) {
             String followerId = permission.getFollowerUserId();
@@ -65,6 +44,7 @@ public class NotificationService {
                         .setToken(follower.getFcmToken())
                         .build();
                 try {
+                    notificationRepository.save(notification);
                     FirebaseMessaging.getInstance().send(followerMessage);
                     logger.info("Notification sent to follower: {}", followerId);
                 } catch (Exception e) {
@@ -75,13 +55,9 @@ public class NotificationService {
     }
 
     // Hàm mới: Gửi thông báo cho chính user hiện tại
-    public void sendNotificationToUser(String userId, String title, String body) {
+    public void sendNotificationToUser(String userId, String title, String body, com.nlu.Health.model.Notification notification) {
         // Lấy thông tin người dùng
         User user = authRepository.findById(userId).orElse(null);
-        if (user == null || user.getFcmToken() == null) {
-            logger.warn("User or FCM Token not found for userId: {}", userId);
-            return;
-        }
 
         // Tạo và gửi thông báo cho user
         Message userMessage = Message.builder()
@@ -93,6 +69,7 @@ public class NotificationService {
                 .build();
 
         try {
+            notificationRepository.save(notification);
             FirebaseMessaging.getInstance().send(userMessage);
             logger.info("Notification sent to user: {}", userId);
         } catch (Exception e) {

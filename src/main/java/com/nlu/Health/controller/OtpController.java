@@ -2,7 +2,7 @@ package com.nlu.Health.controller;
 
 import com.nlu.Health.model.User;
 import com.nlu.Health.repository.AuthRepository;
-import com.nlu.Health.service.OtpData;
+import com.nlu.Health.model.OtpData;
 import com.nlu.Health.service.OtpService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -27,18 +27,15 @@ public class OtpController {
 
         User existingUser = authRepository.findByEmail(email);
         if (existingUser == null) {
-            response.put("result", "error");
-            response.put("message", "Email không tồn tại!");
+            response.put("result", "emailExist");
             return ResponseEntity.badRequest().body(response);
         }
         try {
             otpService.sendOtpFP(email);
             response.put("result", "success");
-            response.put("message", "OTP đã gửi đến email " + email);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             response.put("result", "error");
-            response.put("message", "Lỗi khi gửi OTP: " + e.getMessage());
             return ResponseEntity.badRequest().body(response);
         }
     }
@@ -49,20 +46,16 @@ public class OtpController {
 
         User existingUser = authRepository.findByEmail(email);
         if (existingUser != null) {
-            response.put("result", "error");
-            response.put("message", "Email đã tồn tại!");
+            response.put("result", "emailExist");
             return ResponseEntity.badRequest().body(response);
         }
 
         try {
             otpService.sendOtp(email);
             response.put("result", "success");
-            response.put("message", "OTP đã gửi đến email " + email);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             response.put("result", "error");
-            e.printStackTrace();
-            response.put("message", "Lỗi khi gửi OTP: " + e.getMessage());
             return ResponseEntity.badRequest().body(response);
         }
     }
@@ -73,29 +66,27 @@ public class OtpController {
             @RequestParam String otp) {
         Map<String, String> response = new HashMap<>();
 
+        // Lấy OTP từ service
         OtpData storedOtp = otpService.getOtpData(email);
         if (storedOtp == null) {
-            response.put("result", "error");
-            response.put("message", "OTP không tồn tại!");
+            response.put("result", "OTPnotExist");
             return ResponseEntity.badRequest().body(response);
         }
 
+        // Kiểm tra thời gian hết hạn
         long currentTime = ZonedDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant().toEpochMilli();
         if (currentTime > storedOtp.getExpiresAt()) {
-            response.put("result", "error");
-            response.put("message", "OTP đã hết hạn!");
+            response.put("result", "OTPExpired");
             return ResponseEntity.badRequest().body(response);
         }
 
-        boolean isValid = otpService.verifyOtp(email, otp);
-        if (isValid) {
+        // Xác thực OTP
+        if (otpService.verifyOtp(email, otp)) {
             response.put("result", "success");
-            response.put("message", "OTP hợp lệ!");
             return ResponseEntity.ok(response);
-        } else {
-            response.put("result", "error");
-            response.put("message", "OTP không đúng!");
-            return ResponseEntity.badRequest().body(response);
         }
+
+        response.put("result", "error");
+        return ResponseEntity.badRequest().body(response);
     }
 }

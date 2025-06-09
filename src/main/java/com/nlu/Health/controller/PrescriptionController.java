@@ -4,6 +4,7 @@ import com.nlu.Health.model.Prescription;
 import com.nlu.Health.model.User;
 import com.nlu.Health.repository.AuthRepository;
 import com.nlu.Health.repository.PrescriptionRepository;
+import com.nlu.Health.service.AuthService;
 import com.nlu.Health.tools.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +22,7 @@ public class PrescriptionController {
     private PrescriptionRepository prescriptionRepository;
 
     @Autowired
-    private AuthRepository authRepository;
+    private AuthService authService;
 
     private String getUserIdFromRequest(HttpServletRequest request) {
         String token = request.getHeader("Authorization");
@@ -45,7 +46,7 @@ public class PrescriptionController {
             return null;
         }
 
-        User user = authRepository.findByEmail(email);
+        User user = authService.getUsersByEmail(email);
         System.out.println("PrescriptionController - User ID: " + (user != null ? user.getId() : "null"));
 
         return user != null ? user.getId() : null;
@@ -130,14 +131,14 @@ public class PrescriptionController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/search")
-    public ResponseEntity<List<Prescription>> searchPrescriptions(@RequestParam String name, HttpServletRequest request) {
-        String userId = getUserIdFromRequest(request);
-        if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
-        List<Prescription> prescriptions = prescriptionRepository.findByUserIdAndNameContainingIgnoreCase(userId, name);
-        return ResponseEntity.ok(prescriptions);
-    }
+//    @GetMapping("/search")
+//    public ResponseEntity<List<Prescription>> searchPrescriptions(@RequestParam String name, HttpServletRequest request) {
+//        String userId = getUserIdFromRequest(request);
+//        if (userId == null) {
+//            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+//        }
+//
+//        List<Prescription> prescriptions = prescriptionRepository.findByUserIdAndNameContainingIgnoreCase(userId, name);
+//        return ResponseEntity.ok(prescriptions);
+//    }
 }

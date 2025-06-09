@@ -3,9 +3,9 @@ package com.nlu.Health.controller;
 import com.nlu.Health.model.BloodPressure;
 import com.nlu.Health.model.Notification;
 import com.nlu.Health.model.User;
-import com.nlu.Health.repository.AuthRepository;
 import com.nlu.Health.repository.BloodPressureRepository;
 import com.nlu.Health.repository.NotificationRepository;
+import com.nlu.Health.service.AuthService;
 import com.nlu.Health.service.NotificationService; // Giả sử bạn đã có service này
 import com.nlu.Health.tools.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -30,13 +30,12 @@ public class BloodPressureController {
     private BloodPressureRepository bloodPressureRepository;
 
     @Autowired
-    private AuthRepository authRepository;
+    private AuthService authService;
 
     @Autowired
     private NotificationService notificationService;
 
-    @Autowired
-    private NotificationRepository notificationRepository;
+
 
     private String getUserIdFromRequest(HttpServletRequest request) {
         String token = request.getHeader("Authorization");
@@ -59,7 +58,7 @@ public class BloodPressureController {
             return null;
         }
 
-        User user = authRepository.findByEmail(email);
+        User user = authService.getUsersByEmail(email);
         System.out.println("BloodPressureController - User ID: " + (user != null ? user.getId() : "null"));
 
         return user != null ? user.getId() : null;
@@ -69,7 +68,6 @@ public class BloodPressureController {
     public ResponseEntity<BloodPressure> createBloodPressure(@RequestBody BloodPressure bloodPressure, HttpServletRequest request) {
         String userId = getUserIdFromRequest(request);
         if (userId == null) {
-            System.out.println("BloodPressureController - Unauthorized: Invalid token or user not found");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
@@ -100,8 +98,7 @@ public class BloodPressureController {
         System.out.println("BloodPressureController - Blood pressure created with ID: " + savedBloodPressure.getId());
 
         // Kiểm tra và gửi thông báo nếu huyết áp vượt ngưỡng
-        User user = authRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = authService.findUserById(userId);
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
         String formattedDate = sdf.format(savedBloodPressure.getCreatedAt());
 
@@ -109,18 +106,25 @@ public class BloodPressureController {
             String title = "Cảnh báo huyết áp cao!";
             String body = "Huyết áp của " + user.getName() + " là " + savedBloodPressure.getSystolic() + "/" +
                     savedBloodPressure.getDiastolic() + " mmHg vào " + formattedDate;
-            notificationService.sendNotificationToFollowers(userId, title, body);
             String message = "Nhịp tim của bạn" + " là " + savedBloodPressure.getSystolic() + "/" +
                     savedBloodPressure.getDiastolic() + " mmHg vào " + formattedDate;
-            Notification notification = new Notification(
+            Notification notificationForUser = new Notification(
                     userId,
                     "blood_pressure_alert",
                     message,
                     LocalDateTime.now(),
                     "unread"
             );
-            notificationRepository.save(notification);        }
-
+            Notification notificationforFollowers = new Notification(
+                    userId,
+                    "blood_pressure_alert",
+                    body,
+                    LocalDateTime.now(),
+                    "unread"
+            );
+            notificationService.sendNotificationToFollowers(userId, title, body, notificationforFollowers);
+            notificationService.sendNotificationToUser(userId, title, body, notificationForUser);
+        }
         return ResponseEntity.status(HttpStatus.CREATED).body(savedBloodPressure);
     }
 
@@ -168,4 +172,5 @@ public class BloodPressureController {
         System.out.println("BloodPressureController - Found " + bloodPressures.size() + " blood pressure records for userId: " + userId);
         return ResponseEntity.ok(bloodPressures);
     }
+
 }

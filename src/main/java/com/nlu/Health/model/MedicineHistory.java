@@ -11,7 +11,7 @@ public class MedicineHistory {
     @Id
     private String id;
     private String userId;
-    private String medicineName; // Thay prescriptionsId bằng medicineName
+    private String medicineName;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", timezone = "UTC")
     private Date timestamp;
     private String status;       // PENDING, Taken, Missing, Paused

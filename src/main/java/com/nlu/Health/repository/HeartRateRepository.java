@@ -10,8 +10,6 @@ import java.util.Optional;
 
 @Repository
 public interface HeartRateRepository extends MongoRepository<HeartRate, String> {
-    HeartRate findFirstByOrderByCreatedAtDesc();
-
     HeartRate findFirstByUserIdOrderByCreatedAtDesc(String userId);
     Optional<HeartRate> findByUserIdAndCreatedAtAndHeartRate(String userId, Date createdAt, double heartRate);
     List<HeartRate> findByUserIdOrderByCreatedAtAsc(String userId);

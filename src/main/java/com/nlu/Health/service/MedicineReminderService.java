@@ -34,8 +34,7 @@ public class MedicineReminderService {
 
     @Autowired
     private NotificationService notificationService;
-    @Autowired
-    private NotificationRepository notificationRepository;
+
     @Autowired
     private TrackingPermissionRepository trackingPermissionRepository;
 
@@ -110,7 +109,6 @@ public class MedicineReminderService {
                         ". (Lần nhắc nhở " + reminder.getReminderCount() + "/" + MAX_REMINDERS + ")";
             }
             try {
-                notificationService.sendNotificationToUser(userId, title, body);
                 Notification notification = new Notification(
                         userId,
                         "medication_reminder",
@@ -118,7 +116,8 @@ public class MedicineReminderService {
                         LocalDateTime.now(),
                         "unread"
                 );
-                notificationRepository.save(notification);
+                notificationService.sendNotificationToUser(userId, title, body, notification);
+
                 logger.info("Sent reminder to userId: {} for medicine: {}", userId, medicineName);
             } catch (Exception e) {
                 logger.error("Failed to send reminder to userId: {}. Error: {}", userId, e.getMessage(), e);
@@ -148,7 +147,6 @@ public class MedicineReminderService {
             String followerId = permission.getFollowerUserId();
             try {
 
-                notificationService.sendNotificationToUser(followerId, title, body);
                 Notification notification = new Notification(
                         followerId,
                         "medication_reminder",
@@ -156,7 +154,8 @@ public class MedicineReminderService {
                         LocalDateTime.now(),
                         "unread"
                 );
-                notificationRepository.save(notification);
+                notificationService.sendNotificationToUser(followerId, title, body, notification);
+
                 logger.info("Sent missed notification to followerId: {} for userId: {}", followerId, userId);
             } catch (Exception e) {
                 logger.error("Failed to send missed notification to followerId: {}. Error: {}", followerId, e.getMessage(), e);

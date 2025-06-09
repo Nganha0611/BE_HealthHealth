@@ -10,11 +10,8 @@ import java.util.Optional;
 
 @Repository
 public interface StepsRepository extends MongoRepository<Steps, String> {
-    Steps findFirstByOrderByCreatedAtDesc();
-
     Steps findFirstByUserIdOrderByCreatedAtDesc(String userId);
     Optional<Steps> findFirstByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(String userId, Date startDate, Date endDate);
     List<Steps> findByUserIdOrderByCreatedAtAsc(String userId);
-
     int deleteByUserIdAndCreatedAtBetween(String userId, Date startDate, Date endDate);
 }

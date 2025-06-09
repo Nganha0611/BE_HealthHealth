@@ -4,6 +4,7 @@ import com.nlu.Health.model.EmergencyContact;
 import com.nlu.Health.repository.EmergencyContactRepository;
 import com.nlu.Health.model.User;
 import com.nlu.Health.repository.AuthRepository;
+import com.nlu.Health.service.AuthService;
 import com.nlu.Health.tools.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +24,7 @@ public class EmergencyContactController {
     private EmergencyContactRepository emergencyContactRepository;
 
     @Autowired
-    private AuthRepository authRepository;
+    private AuthService authService;
 
     private String getUserIdFromRequest(HttpServletRequest request) {
         String token = request.getHeader("Authorization");
@@ -37,7 +38,7 @@ public class EmergencyContactController {
         if (email == null) {
             return null;
         }
-        User user = authRepository.findByEmail(email);
+        User user = authService.getUsersByEmail(email);
         return user != null ? user.getId() : null;
     }
 
@@ -62,10 +63,6 @@ public class EmergencyContactController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        if (contact.getName() == null || contact.getPhoneNumber() == null) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-        }
-
         // Kiểm tra trùng lặp số điện thoại
         List<EmergencyContact> existingContacts = emergencyContactRepository.findByUserIdAndPhoneNumber(userId, contact.getPhoneNumber());
         if (!existingContacts.isEmpty()) {
@@ -77,17 +74,11 @@ public class EmergencyContactController {
         return ResponseEntity.status(HttpStatus.CREATED).body(savedContact);
     }
 
-    // Xóa liên hệ khẩn cấp
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteEmergencyContact(HttpServletRequest request, @PathVariable String id) {
         String userId = getUserIdFromRequest(request);
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
-        Optional<EmergencyContact> contact = emergencyContactRepository.findById(id);
-        if (!contact.isPresent() || !contact.get().getUserId().equals(userId)) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
 
         emergencyContactRepository.deleteById(id);
