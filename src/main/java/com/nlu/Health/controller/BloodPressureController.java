@@ -1,9 +1,12 @@
 package com.nlu.Health.controller;
 
 import com.nlu.Health.model.BloodPressure;
+import com.nlu.Health.model.Notification;
 import com.nlu.Health.model.User;
-import com.nlu.Health.repository.AuthRepository;
 import com.nlu.Health.repository.BloodPressureRepository;
+import com.nlu.Health.repository.NotificationRepository;
+import com.nlu.Health.service.AuthService;
+import com.nlu.Health.service.NotificationService; // Giả sử bạn đã có service này
 import com.nlu.Health.tools.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,10 +14,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
+import java.text.SimpleDateFormat;
 
 @RestController
 @RequestMapping("/api/blood-pressures")
@@ -24,19 +30,22 @@ public class BloodPressureController {
     private BloodPressureRepository bloodPressureRepository;
 
     @Autowired
-    private AuthRepository authRepository;
+    private AuthService authService;
 
-    // Hàm lấy userId từ token, tương tự PrescriptionController
+    @Autowired
+    private NotificationService notificationService;
+
+
+
     private String getUserIdFromRequest(HttpServletRequest request) {
         String token = request.getHeader("Authorization");
-        System.out.println("BloodPressureController - Authorization Header: " + token); // Logging để debug
+        System.out.println("BloodPressureController - Authorization Header: " + token);
 
         if (token == null) {
             System.out.println("BloodPressureController - Token is null");
             return null;
         }
 
-        // Xử lý token linh hoạt: bỏ prefix "Bearer " nếu có
         if (token.startsWith("Bearer ")) {
             token = token.substring(7);
         }
@@ -49,7 +58,7 @@ public class BloodPressureController {
             return null;
         }
 
-        User user = authRepository.findByEmail(email);
+        User user = authService.getUsersByEmail(email);
         System.out.println("BloodPressureController - User ID: " + (user != null ? user.getId() : "null"));
 
         return user != null ? user.getId() : null;
@@ -59,18 +68,63 @@ public class BloodPressureController {
     public ResponseEntity<BloodPressure> createBloodPressure(@RequestBody BloodPressure bloodPressure, HttpServletRequest request) {
         String userId = getUserIdFromRequest(request);
         if (userId == null) {
-            System.out.println("BloodPressureController - Unauthorized: Invalid token or user not found");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
         bloodPressure.setUserId(userId);
-        ZonedDateTime currentTime = ZonedDateTime.now(ZoneId.of("UTC"));
-        bloodPressure.setCreatedAt(Date.from(currentTime.toInstant()));
 
+        // Chuẩn hóa thời gian createdAt
+        if (bloodPressure.getCreatedAt() == null) {
+            ZonedDateTime currentTime = ZonedDateTime.now(ZoneId.of("UTC"));
+            bloodPressure.setCreatedAt(Date.from(currentTime.toInstant()));
+        }
+
+        // Kiểm tra trùng lặp
+        Optional<BloodPressure> existingRecord = bloodPressureRepository.findByUserIdAndCreatedAtAndSystolicAndDiastolic(
+                userId,
+                bloodPressure.getCreatedAt(),
+                bloodPressure.getSystolic(),
+                bloodPressure.getDiastolic()
+        );
+
+        if (existingRecord.isPresent()) {
+            System.out.println("BloodPressureController - Duplicate record found for userId: " + userId + ", createdAt: " + bloodPressure.getCreatedAt());
+            return ResponseEntity.status(HttpStatus.OK).body(existingRecord.get());
+        }
+
+        // Lưu bản ghi mới
         System.out.println("BloodPressureController - Creating blood pressure for userId: " + userId);
         BloodPressure savedBloodPressure = bloodPressureRepository.save(bloodPressure);
         System.out.println("BloodPressureController - Blood pressure created with ID: " + savedBloodPressure.getId());
 
+        // Kiểm tra và gửi thông báo nếu huyết áp vượt ngưỡng
+        User user = authService.findUserById(userId);
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+        String formattedDate = sdf.format(savedBloodPressure.getCreatedAt());
+
+        if (savedBloodPressure.getSystolic() > 140 || savedBloodPressure.getDiastolic() > 90) {
+            String title = "Cảnh báo huyết áp cao!";
+            String body = "Huyết áp của " + user.getName() + " là " + savedBloodPressure.getSystolic() + "/" +
+                    savedBloodPressure.getDiastolic() + " mmHg vào " + formattedDate;
+            String message = "Nhịp tim của bạn" + " là " + savedBloodPressure.getSystolic() + "/" +
+                    savedBloodPressure.getDiastolic() + " mmHg vào " + formattedDate;
+            Notification notificationForUser = new Notification(
+                    userId,
+                    "blood_pressure_alert",
+                    message,
+                    LocalDateTime.now(),
+                    "unread"
+            );
+            Notification notificationforFollowers = new Notification(
+                    userId,
+                    "blood_pressure_alert",
+                    body,
+                    LocalDateTime.now(),
+                    "unread"
+            );
+            notificationService.sendNotificationToFollowers(userId, title, body, notificationforFollowers);
+            notificationService.sendNotificationToUser(userId, title, body, notificationForUser);
+        }
         return ResponseEntity.status(HttpStatus.CREATED).body(savedBloodPressure);
     }
 
@@ -102,7 +156,6 @@ public class BloodPressureController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        // Kiểm tra userId khớp với user từ token
         if (!authenticatedUserId.equals(userId)) {
             System.out.println("BloodPressureController - Forbidden: userId " + userId + " does not match authenticated user " + authenticatedUserId);
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -119,4 +172,5 @@ public class BloodPressureController {
         System.out.println("BloodPressureController - Found " + bloodPressures.size() + " blood pressure records for userId: " + userId);
         return ResponseEntity.ok(bloodPressures);
     }
+
 }

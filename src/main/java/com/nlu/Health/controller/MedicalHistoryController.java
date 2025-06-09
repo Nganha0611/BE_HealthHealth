@@ -2,8 +2,8 @@ package com.nlu.Health.controller;
 
 import com.nlu.Health.model.MedicalHistory;
 import com.nlu.Health.model.User;
-import com.nlu.Health.repository.AuthRepository;
 import com.nlu.Health.repository.MedicalHistoryRepository;
+import com.nlu.Health.service.AuthService;
 import com.nlu.Health.tools.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +20,7 @@ public class MedicalHistoryController {
     private MedicalHistoryRepository medicalHistoryRepository;
 
     @Autowired
-    private AuthRepository authRepository;
+    private AuthService authService;
 
     private String getUserIdFromRequest(HttpServletRequest request) {
         String token = request.getHeader("Authorization");
@@ -31,7 +31,7 @@ public class MedicalHistoryController {
         String email = JwtUtil.validateToken(token);
         if (email == null) return null;
 
-        User user = authRepository.findByEmail(email);
+        User user = authService.getUsersByEmail(email);
         return user != null ? user.getId() : null;
     }
 

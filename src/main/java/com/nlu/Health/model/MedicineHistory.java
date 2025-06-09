@@ -5,24 +5,25 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Date;
+
 @Document(collection = "medicine_history")
 public class MedicineHistory {
     @Id
     private String id;
     private String userId;
-    private String prescriptionsId;
+    private String medicineName;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", timezone = "UTC")
     private Date timestamp;
-    private String status;
+    private String status;       // PENDING, Taken, Missing, Paused
     private String note;
 
-    // Getters và setters
+    // Getters và Setters
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
     public String getUserId() { return userId; }
     public void setUserId(String userId) { this.userId = userId; }
-    public String getPrescriptionsId() { return prescriptionsId; }
-    public void setPrescriptionsId(String prescriptionsId) { this.prescriptionsId = prescriptionsId; }
+    public String getMedicineName() { return medicineName; }
+    public void setMedicineName(String medicineName) { this.medicineName = medicineName; }
     public Date getTimestamp() { return timestamp; }
     public void setTimestamp(Date timestamp) { this.timestamp = timestamp; }
     public String getStatus() { return status; }

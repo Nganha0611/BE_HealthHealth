@@ -1,15 +1,23 @@
 package com.nlu.Health.service;
 
+import com.nlu.Health.model.OtpData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
 @Service
 public class OtpService {
+
+
     private final Map<String, OtpData> otpStorage = new HashMap<>();
-    private static final long OTP_VALID_DURATION = 5 * 60 * 1000;
+    private static final long OTP_VALID_DURATION = 5 * 60 * 1000; // 5 phút
+    private static final ZoneId ZONE_ID = ZoneId.of("Asia/Ho_Chi_Minh");
 
     @Autowired
     private EmailService mailService;
@@ -20,9 +28,13 @@ public class OtpService {
 
     public void sendOtpFP(String email) throws Exception {
         String otp = generateOtp();
-        long expiresAt = System.currentTimeMillis() + OTP_VALID_DURATION;
+        long currentTime = ZonedDateTime.now(ZONE_ID).toInstant().toEpochMilli();
+        long expiresAt = currentTime + OTP_VALID_DURATION;
 
         otpStorage.put(email, new OtpData(otp, expiresAt));
+
+        System.out.println("OTP created at: " + Instant.ofEpochMilli(currentTime).atZone(ZONE_ID));
+        System.out.println("OTP expires at: " + Instant.ofEpochMilli(expiresAt).atZone(ZONE_ID));
 
         String subject = "Xác nhận đặt lại mật khẩu - Ứng dụng HealthHealth";
         String body = "<div style='font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4;'>"
@@ -42,9 +54,13 @@ public class OtpService {
 
     public void sendOtp(String email) throws Exception {
         String otp = generateOtp();
-        long expiresAt = System.currentTimeMillis() + OTP_VALID_DURATION;
+        long currentTime = ZonedDateTime.now(ZONE_ID).toInstant().toEpochMilli();
+        long expiresAt = currentTime + OTP_VALID_DURATION;
 
         otpStorage.put(email, new OtpData(otp, expiresAt));
+
+        System.out.println("OTP created at: " + Instant.ofEpochMilli(currentTime).atZone(ZONE_ID));
+        System.out.println("OTP expires at: " + Instant.ofEpochMilli(expiresAt).atZone(ZONE_ID));
 
         String subject = "Xác nhận đăng ký tài khoản - Ứng dụng HealthHealth";
         String body = "<div style='font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4;'>"
@@ -62,38 +78,35 @@ public class OtpService {
         mailService.sendEmail(email, subject, body);
     }
 
-    public boolean verifyOtp(String email, String inputOtp) {
+    public boolean verifyOtp(String email, String otp) {
         OtpData storedOtp = otpStorage.get(email);
+        long currentTime = ZonedDateTime.now(ZONE_ID).toInstant().toEpochMilli();
 
-        if (storedOtp == null || System.currentTimeMillis() > storedOtp.getExpiresAt()) {
-            otpStorage.remove(email);
-            return false; // OTP không hợp lệ hoặc đã hết hạn
+        if (storedOtp == null) {
+            System.out.println("OTP not found for email: " + email);
+            return false;
         }
 
-        if (storedOtp.getOtp().equals(inputOtp)) {
-            otpStorage.remove(email); // Xóa OTP sau khi xác thực thành công
+        System.out.println("Current time: " + Instant.ofEpochMilli(currentTime).atZone(ZONE_ID));
+        System.out.println("OTP expires at: " + Instant.ofEpochMilli(storedOtp.getExpiresAt()).atZone(ZONE_ID));
+
+        if (currentTime > storedOtp.getExpiresAt()) {
+            otpStorage.remove(email);
+            System.out.println("OTP has expired for email: " + email);
+            return false;
+        }
+
+        if (storedOtp.getOtp().equals(otp)) {
+            otpStorage.remove(email);
+            System.out.println("OTP verified successfully for email: " + email);
             return true;
         }
 
+        System.out.println("Invalid OTP for email: " + email);
         return false;
     }
 
-    // ✅ Định nghĩa class OtpData để lưu OTP và thời gian hết hạn
-    private static class OtpData {
-        private final String otp;
-        private final long expiresAt;
-
-        public OtpData(String otp, long expiresAt) {
-            this.otp = otp;
-            this.expiresAt = expiresAt;
-        }
-
-        public String getOtp() {
-            return otp;
-        }
-
-        public long getExpiresAt() {
-            return expiresAt;
-        }
+    public OtpData getOtpData(String email) {
+        return otpStorage.get(email);
     }
 }
