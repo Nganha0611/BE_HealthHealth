@@ -94,7 +94,7 @@ public class HeartRateController {
 
         User user = authService.findUserById(userId);
 
-        if (savedHeartRate.getHeartRate() > 100) {
+        if (savedHeartRate.getHeartRate() > 100 || savedHeartRate.getHeartRate() < 50 ) {
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
             String formattedDate = sdf.format(savedHeartRate.getCreatedAt());
             String title = "Cảnh báo nhịp tim!";
