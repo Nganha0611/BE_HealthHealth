@@ -1,10 +1,10 @@
 HELP.md
-#target/
+target/
 !.mvn/wrapper/maven-wrapper.jar
-#!**/src/main/**/target/
-#!**/src/test/**/target/
+!**/src/main/**/target/
+!**/src/test/**/target/
 src/main/resources/firebase-service-account.json
-
+.env
 ### STS ###
 .apt_generated
 .classpath
