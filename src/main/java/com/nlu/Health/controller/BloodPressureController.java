@@ -4,9 +4,8 @@ import com.nlu.Health.model.BloodPressure;
 import com.nlu.Health.model.Notification;
 import com.nlu.Health.model.User;
 import com.nlu.Health.repository.BloodPressureRepository;
-import com.nlu.Health.repository.NotificationRepository;
 import com.nlu.Health.service.AuthService;
-import com.nlu.Health.service.NotificationService; // Giả sử bạn đã có service này
+import com.nlu.Health.service.NotificationService;
 import com.nlu.Health.tools.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,8 +33,6 @@ public class BloodPressureController {
 
     @Autowired
     private NotificationService notificationService;
-
-
 
     private String getUserIdFromRequest(HttpServletRequest request) {
         String token = request.getHeader("Authorization");
@@ -102,12 +99,18 @@ public class BloodPressureController {
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
         String formattedDate = sdf.format(savedBloodPressure.getCreatedAt());
 
-        if (savedBloodPressure.getSystolic() > 140 || savedBloodPressure.getDiastolic() > 90) {
-            String title = "Cảnh báo huyết áp cao!";
+        // Kiểm tra huyết áp bất thường
+        if (savedBloodPressure.getSystolic() >= 140 || savedBloodPressure.getSystolic() <= 90 ||
+                savedBloodPressure.getDiastolic() >= 90 || savedBloodPressure.getDiastolic() <= 60) {
+            String alertType = (savedBloodPressure.getSystolic() >= 140 || savedBloodPressure.getDiastolic() >= 90)
+                    ? "Cảnh báo huyết áp cao!"
+                    : "Cảnh báo huyết áp thấp!";
+
             String body = "Huyết áp của " + user.getName() + " là " + savedBloodPressure.getSystolic() + "/" +
                     savedBloodPressure.getDiastolic() + " mmHg vào " + formattedDate;
-            String message = "Nhịp tim của bạn" + " là " + savedBloodPressure.getSystolic() + "/" +
+            String message = "Huyết áp của bạn là " + savedBloodPressure.getSystolic() + "/" +
                     savedBloodPressure.getDiastolic() + " mmHg vào " + formattedDate;
+
             Notification notificationForUser = new Notification(
                     userId,
                     "blood_pressure_alert",
@@ -115,15 +118,15 @@ public class BloodPressureController {
                     LocalDateTime.now(),
                     "unread"
             );
-            Notification notificationforFollowers = new Notification(
+            Notification notificationForFollowers = new Notification(
                     userId,
                     "blood_pressure_alert",
                     body,
                     LocalDateTime.now(),
                     "unread"
             );
-            notificationService.sendNotificationToFollowers(userId, title, body, notificationforFollowers);
-            notificationService.sendNotificationToUser(userId, title, body, notificationForUser);
+            notificationService.sendNotificationToFollowers(userId, alertType, body, notificationForFollowers);
+            notificationService.sendNotificationToUser(userId, alertType, body, notificationForUser);
         }
         return ResponseEntity.status(HttpStatus.CREATED).body(savedBloodPressure);
     }
@@ -172,5 +175,4 @@ public class BloodPressureController {
         System.out.println("BloodPressureController - Found " + bloodPressures.size() + " blood pressure records for userId: " + userId);
         return ResponseEntity.ok(bloodPressures);
     }
-
 }
